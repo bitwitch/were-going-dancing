@@ -1,9 +1,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_timer.h>
 #include <stdio.h>
-#include <stdbool.h>
 
-#define MAX_BUILDINGS 100
+typedef int bool32; 
 
 typedef struct Vector2 {
     float x, y; 
@@ -14,51 +13,22 @@ typedef struct Building {
     Vector2 position; 
     int width; 
     int height; 
-    bool active; 
+    bool32 active; 
 } Building;
 
 typedef struct Player {
-    SDL_Rect* collider;
+    Vector2 position;
     int speed; 
     float vely;        
 } Player; 
 
-static bool Running;
 static int screenWidth  = 1024;
 static int screenHeight = 576;
+static bool32 Running   = 0;
+static bool32 left      = 0;
+static bool32 right     = 0;
 static int OffsetX      = -30;
 static float gravity    = 9.8; 
-
-// ---------------
-// FUNCTIONS 
-// ---------------
-
-int rand_range(int min_n, int max_n)
-{
-    return rand() % (max_n - min_n + 1) + min_n;
-}
-
-/* Print all information about a key event */
-void PrintKeyInfo( SDL_KeyboardEvent *key )
-{
-    /* Is it a release or a press? */
-    if( key->type == SDL_KEYUP )
-        printf( "Release:- " );
-    else
-        printf( "Press:- " );
-
-    /* Print the hardware scancode first */
-    printf( "Scancode: 0x%02X", key->keysym.scancode );
-    /* Print the name of the key */
-    printf( ", Name: %s", SDL_GetKeyName( key->keysym.sym ) );
-    /* We want to print the unicode info, but we need to make */
-    /* sure its a press event first (remember, release events */
-    /* don't have unicode info                                */
-    
-    printf( "\n" );
-
-}
-// ---------------
 
 int main(void)
 {     
@@ -66,7 +36,10 @@ int main(void)
     SDL_Renderer *renderer = NULL;
     SDL_Surface *surface   = NULL;
     SDL_Texture *texture   = NULL;
-    SDL_Event event;
+     // struct to hold the position and size of the sprite
+    SDL_Rect dest; 
+    dest.w = 25;
+    dest.h = 50; 
 
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0) 
     {
@@ -83,83 +56,88 @@ int main(void)
         screenHeight,
         window_flags);
 
+    if (!window)  
+    {
+        printf("Could not create window: %s\n", SDL_GetError());
+        SDL_Quit();
+        return 1;
+    }
+
     Uint32 render_flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
     renderer = SDL_CreateRenderer(window, -1, render_flags);
 
-    if (window == NULL || renderer == NULL)  
+    if (!renderer)
     {
-        printf("Could not create window or renderer: %s\n", SDL_GetError());
+        printf("error creating renderer: %s\n", SDL_GetError());
+        SDL_DestroyWindow(window);
+        SDL_Quit();
         return 1;
     }
 
     // Initialization
     Player shaw;
-    SDL_Rect shawCollider = { screenWidth/2, screenHeight/2, 25, 50 };
-    shaw.collider = &shawCollider;
-    shaw.speed      = 5; 
-    shaw.vely       = 0; 
+    shaw.position  = (Vector2){ screenWidth/2, screenHeight/2 };
+    shaw.speed     = 5; 
+    shaw.vely      = 0; 
 
-    // Camera2D camera;
-    // camera.target = (Vector2){ shaw.position.x + shaw.width/2, shaw.position.y + shaw.height/2 };
-    // camera.offset = (Vector2){ 0, 0 };
-    // camera.rotation = 0.0f;
-    // camera.zoom = 1.0f;
-
-    // Temp buildings to better see and test camera movement
-    SDL_Rect buildings[MAX_BUILDINGS];
-    SDL_Color buildColors[MAX_BUILDINGS];
-    int spacing = 0;
-    for (int i = 0; i < MAX_BUILDINGS; i++)
-    {
-        buildings[i].w = rand_range(50, 200);
-        buildings[i].h = rand_range(100, 800);
-        buildings[i].y = (float)(screenHeight - 130 - buildings[i].h);
-        buildings[i].x =(float)(-6000 + spacing);
-
-        spacing += buildings[i].w;
-        
-        buildColors[i] = (SDL_Color){ rand_range(200, 240), rand_range(200, 240), rand_range(200, 250), 255 };
-    }
-
-    Running = true; 
-    while (Running) {
-        SDL_PollEvent(&event);
-
-        switch (event.type)
+    Running = 1; 
+    while (Running != 0) {
+        SDL_Event event;
+        while(SDL_PollEvent(&event)) 
         {
+            switch (event.type)
+            {
             case SDL_QUIT:
-                Running = false; 
+                Running = 0; 
                 break;
 
             case SDL_KEYDOWN: 
-                switch( event.key.keysym.sym )
+                switch( event.key.keysym.scancode )
                 {
-                    case SDLK_a:
-                        shaw.collider->x -= shaw.speed;
-                        break;
+                case SDL_SCANCODE_A:
+                case SDL_SCANCODE_LEFT:
+                    left = 1;
+                    break;
 
-                    case SDLK_d:
-                        shaw.collider->x += shaw.speed;
-                        break;
+                case SDL_SCANCODE_D:
+                case SDL_SCANCODE_RIGHT:
+                    right = 1;
+                    break;
                 }
                 break;
 
             case SDL_KEYUP:
+                switch( event.key.keysym.scancode )
+                {
+                case SDL_SCANCODE_A:
+                case SDL_SCANCODE_LEFT:
+                    left = 0;
+                    break;
+
+                case SDL_SCANCODE_D:
+                case SDL_SCANCODE_RIGHT:
+                    right = 0;
+                    break;
+                }
                 break;
+            }
         }
 
+        // Update
 
-         // Update
+        if (left && !right) shaw.position.x -= shaw.speed; 
+        if (right && !left) shaw.position.x += shaw.speed; 
+
+        dest.x = (int)shaw.position.x; 
+        dest.y = (int)shaw.position.y;
+        
 
         // Draw 
         SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
         SDL_RenderClear(renderer);
 
-        // for (int i = 0; i < MAX_BUILDINGS; i++) DrawRectangleRec(buildings[i], buildColors[i]);
-        
-
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-        SDL_RenderFillRect(renderer, shaw.collider);
+        SDL_RenderFillRect(renderer, &dest);
         // SDL_RenderCopy(renderer, texture, NULL, NULL);
 
         // update the screen with any rendering performed since the previous call.
@@ -169,7 +147,6 @@ int main(void)
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-
     SDL_Quit();
 
     return 0;
