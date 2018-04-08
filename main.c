@@ -91,6 +91,33 @@ int main(void)
                 Running = 0; 
                 break;
 
+            case SDL_WINDOWEVENT:
+                switch(event.window.event) 
+                {
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:
+                    {
+                        int ClientWidth; 
+                        int ClientHeight;
+                        SDL_GetWindowSize(window, &ClientWidth, &ClientHeight);
+
+                        // TODO(shaw): On window resize, need to take the current buffer and scale it down to a new buffer and blit that to the screen.
+                        // In the future I will probably want to have some sort of breakpoints of fixed resolution and fill the rest with a black frame 
+                        // or something like that. BlitScaled or perhaps RenderSetScale might be what I need here
+
+                        // int SDL_BlitScaled(
+                        //     SDL_Surface*    src,
+                        //     const SDL_Rect* srcrect,
+                        //     SDL_Surface*    dst,
+                        //     SDL_Rect*       dstrect);
+
+                        // int SDL_RenderSetScale(
+                        //     SDL_Renderer* renderer,
+                        //     float         scaleX,
+                        //     float         scaleY)
+
+                    } break; 
+                } break; 
+
             case SDL_KEYDOWN: 
                 switch( event.key.keysym.scancode )
                 {
